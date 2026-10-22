@@ -1,5 +1,7 @@
 # Exxat Mail Builder
 
+**Open the website: https://muskan01313.github.io/exxat-mail-builder/**
+
 A one-page website that builds the files needed to set up evaluation-form notifications, without editing JSON by hand.
 
 ## What it does
