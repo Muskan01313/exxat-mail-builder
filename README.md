@@ -10,7 +10,7 @@ A one-page website that builds the files needed to set up evaluation-form notifi
    - **Fusion file:** the Mongo email template for each form and notification, with a new GUID in `id` and `_id`.
    - **Notification file:** the action notification setup for each form.
    - **Stakeholder file:** one file per person, listing the feature IDs of every form entered.
-4. **Review details:** stakeholder first name, last name and email, and an optional shared email template ID.
+4. **Review details:** your organization (Tenant ID, owning organization unit and partition key), stakeholder first name, last name and email, and an optional shared email template ID.
 
 The files can be copied or downloaded one by one, or downloaded together as a zip.
 
