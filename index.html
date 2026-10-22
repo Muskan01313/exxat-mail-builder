@@ -327,6 +327,20 @@ button.go:not(:disabled) { box-shadow: 0 10px 22px -10px var(--cobalt); }
 .person-row.org-row { grid-template-columns: repeat(3, minmax(0, 1fr)); padding-left: 14px; counter-increment: none; }
 .person-row.org-row::before { display: none; }
 @media (max-width: 640px) { .person-row.org-row { grid-template-columns: 1fr; } }
+/* ---- coloured option cards ---- */
+.choice { background: linear-gradient(150deg, var(--k-soft) 0%, var(--paper) 78%); border: 1px solid color-mix(in srgb, var(--k) 28%, var(--line)); }
+.choice .ico { background: var(--k); color: var(--paper); box-shadow: 0 6px 14px -6px var(--k); }
+.choice b { color: var(--k); }
+.choice .tick { border-color: color-mix(in srgb, var(--k) 45%, var(--line)); }
+.choice:hover { border-color: var(--k); }
+.choice:has(input:checked) { background: linear-gradient(150deg, var(--k) 0%, color-mix(in srgb, var(--k) 78%, #000) 100%); border-color: var(--k); box-shadow: 0 14px 30px -14px var(--k); }
+.choice:has(input:checked) b, .choice:has(input:checked) .d { color: var(--paper); }
+.choice:has(input:checked) .d { opacity: .88; }
+.choice:has(input:checked) .ico { background: rgba(255,255,255,.2); color: var(--paper); box-shadow: none; }
+.choice:has(input:checked) .tick { background: var(--paper); border-color: var(--paper); color: var(--k); }
+.choice:has(input:disabled) { background: var(--paper-2); border-color: var(--line); }
+.choice:has(input:disabled) .ico { background: var(--line); color: var(--muted); box-shadow: none; }
+.choice:has(input:disabled) b { color: var(--muted); }
 </style>
 </head>
 <body>
