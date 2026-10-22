@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Builds Fusion email templates, notification files and stakeholder files for evaluation forms, with a new GUID for every Fusion file.">
+<style>html{color-scheme:light}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Exxat Mail Builder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: an airmail envelope. The whole tool sits inside a striped airmail border; four postage stamps across the top track the route and get postmarked as you finish each one. One step shows at a time, and finished files arrive as letters. */
+:root {
+  --sky: #dfe7ff;           /* page backdrop */
+  --sky-2: #c9d6ff;
+  --paper: #ffffff;
+  --paper-2: #f5f7ff;
+  --fg: #101a3a;
+  --muted: #5b6488;
+  --line: #d5dbf2;
+  --cobalt: #2342d6;        /* airmail blue, primary */
+  --cobalt-ink: #ffffff;
+  --cobalt-soft: #e2e8ff;
+  --red: #e2402f;           /* airmail red */
+  --red-soft: #ffe4df;
+  --sun: #ffb81f;           /* stamp yellow */
+  --sun-ink: #2b1b00;
+  --gold: #b5651d; --gold-soft: #ffe9d2;
+  --teal: #0b8c7b; --teal-soft: #d8f4ef;
+  --plum: #8a3fd1; --plum-soft: #f1e5fd;
+  --ok: #137a45; --ok-soft: #dcf3e6;
+  --warn: #935700; --warn-soft: #fdeed2;
+  --bad: #b72a1f; --bad-soft: #fde2df;
+  --code-bg: #f1f4ff;
+  --shadow: 0 2px 4px rgba(16, 26, 58, .06), 0 24px 48px -24px rgba(16, 26, 58, .35);
+  --font-display: "Bricolage Grotesque", "Public Sans", system-ui, sans-serif;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sky: #0a1030; --sky-2: #131c4a; --paper: #121a3c; --paper-2: #0e1532; --fg: #eaeeff; --muted: #a1abd3; --line: #28336a;
+    --cobalt: #7d93ff; --cobalt-ink: #0a1030; --cobalt-soft: #1d2a6e; --red: #ff7a68; --red-soft: #3d1a18;
+    --sun: #ffc548; --sun-ink: #2b1b00; --gold: #ffad66; --gold-soft: #3a2412; --teal: #4fd6c1; --teal-soft: #0f3330; --plum: #c497f5; --plum-soft: #2c1b47;
+    --ok: #6ed69e; --ok-soft: #10301f; --warn: #f0b75f; --warn-soft: #37280f; --bad: #ff8d82; --bad-soft: #3b1715;
+    --code-bg: #0c1330; --shadow: 0 2px 4px rgba(0,0,0,.4), 0 24px 48px -24px rgba(0,0,0,.8);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --sky: #0a1030; --sky-2: #131c4a; --paper: #121a3c; --paper-2: #0e1532; --fg: #eaeeff; --muted: #a1abd3; --line: #28336a;
+  --cobalt: #7d93ff; --cobalt-ink: #0a1030; --cobalt-soft: #1d2a6e; --red: #ff7a68; --red-soft: #3d1a18;
+  --sun: #ffc548; --sun-ink: #2b1b00; --gold: #ffad66; --gold-soft: #3a2412; --teal: #4fd6c1; --teal-soft: #0f3330; --plum: #c497f5; --plum-soft: #2c1b47;
+  --ok: #6ed69e; --ok-soft: #10301f; --warn: #f0b75f; --warn-soft: #37280f; --bad: #ff8d82; --bad-soft: #3b1715;
+  --code-bg: #0c1330; --shadow: 0 2px 4px rgba(0,0,0,.4), 0 24px 48px -24px rgba(0,0,0,.8);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--sky); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  background-image: radial-gradient(1200px 500px at 85% -10%, var(--sky-2), transparent 70%), radial-gradient(800px 400px at -10% 110%, var(--sky-2), transparent 70%);
+  background-attachment: fixed;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px;
+  min-height: 100%;
+}
+
+/* envelope */
+.envelope { min-height: calc(100dvh - 24px); display: flex; padding: 12px; border-radius: 22px; box-shadow: var(--shadow);
+  background: repeating-linear-gradient(-45deg, var(--red) 0 16px, var(--paper) 16px 26px, var(--cobalt) 26px 42px, var(--paper) 42px 52px); }
+.sheet { flex: 1; background: var(--paper); border-radius: 14px; padding: 34px clamp(16px, 4vw, 56px) 40px; display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.sheet > * { width: 100%; max-width: 1180px; margin-inline: auto; }
+@media (max-width: 560px) { .envelope { padding: 8px; border-radius: 16px; } .sheet { padding: 20px 16px 24px; } }
+
+/* letterhead */
+.letterhead { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: start; }
+.kicker { font-size: .72rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--red); margin: 0 0 8px; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(2.2rem, 7vw, 3.6rem); line-height: .95; letter-spacing: -.035em; margin: 0; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--cobalt); }
+.lede { color: var(--muted); margin: 12px 0 0; max-width: 48ch; }
+.postmark-guid { width: 172px; aspect-ratio: 1; border-radius: 50%; border: 2.5px solid var(--cobalt); color: var(--cobalt); position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 18px; transform: rotate(-8deg); }
+.postmark-guid::before { content: ""; position: absolute; inset: 7px; border-radius: 50%; border: 1px dashed var(--cobalt); opacity: .6; }
+.postmark-guid .pm-label { font-size: .62rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.postmark-guid .guid { font-family: var(--font-mono); font-size: .68rem; line-height: 1.35; margin: 6px 0; word-break: break-all; color: var(--fg); }
+.postmark-guid .pm-btns { display: flex; gap: 4px; position: relative; }
+.postmark-guid button { padding: 2px 8px; font-size: .68rem; border-radius: 999px; border-color: var(--cobalt); color: var(--cobalt); background: var(--paper); }
+@media (max-width: 640px) { .letterhead { grid-template-columns: 1fr; } .postmark-guid { width: 150px; justify-self: end; margin-top: -8px; } }
+
+/* stamps (progress) */
+.stamps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stamp { --c: var(--paper-2); --c-ink: var(--muted); position: relative; padding: 5px; border: 0; border-radius: 0; font: inherit; cursor: default; min-width: 0;
+  background: radial-gradient(circle, transparent 2.4px, var(--c) 2.9px) -5px -5px / 10px 10px; filter: drop-shadow(0 1px 1px rgba(16,26,58,.12)); }
+.stamp .face { position: relative; display: block; overflow: hidden; background: var(--c); color: var(--c-ink); text-align: center; padding: 8px 6px 7px; }
+.stamp .n { font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; line-height: 1; display: block; position: relative; z-index: 1; }
+.stamp .t { font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; display: block; margin-top: 3px; overflow-wrap: anywhere; position: relative; z-index: 1; }
+.stamp.current { --c: var(--cobalt); --c-ink: var(--cobalt-ink); }
+.stamp.done { --c: var(--sun); --c-ink: var(--sun-ink); cursor: pointer; }
+.stamp.done .face::after { content: ""; position: absolute; right: -14px; top: 50%; width: 64px; height: 64px; transform: translateY(-50%); border-radius: 50%;
+  border: 2px solid rgba(16,26,58,.35); box-shadow: inset 0 0 0 5px transparent, inset 0 0 0 6px rgba(16,26,58,.22); }
+.stamp:not(:disabled):hover { transform: rotate(-2deg); }
+@media (max-width: 480px) { .stamps { gap: 6px; } .stamp .t { font-size: .58rem; letter-spacing: .04em; } .stamp .n { font-size: 1.2rem; } }
+
+/* steps */
+.step { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.step-head h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(1.5rem, 4.5vw, 2.1rem); letter-spacing: -.025em; line-height: 1.05; text-wrap: balance; }
+.step-head p { margin: 6px 0 0; color: var(--muted); }
+.nav { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding-top: 6px; border-top: 1px dashed var(--line); }
+.nav .why { color: var(--muted); font-size: .86rem; }
+
+/* choice tiles */
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.choice { position: relative; display: flex; flex-direction: column; gap: 14px; padding: 18px; min-height: 168px; cursor: pointer; min-width: 0;
+  border-radius: 18px; border: 2px solid var(--k-soft); background: var(--k-soft); color: var(--fg); }
+.choice:hover { border-color: var(--k); transform: translateY(-2px); }
+.choice input { position: absolute; opacity: 0; pointer-events: none; }
+.choice .ico { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; background: var(--paper); color: var(--k); }
+.choice .ico svg { width: 28px; height: 28px; }
+.choice b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; letter-spacing: -.01em; }
+.choice .d { display: block; font-size: .88rem; opacity: .8; margin-top: 2px; }
+.choice .tick { position: absolute; top: 14px; right: 14px; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--k); display: grid; place-items: center; color: transparent; background: var(--paper); }
+.choice .tick svg { width: 15px; height: 15px; }
+.choice:has(input:checked) { background: var(--k); border-color: var(--k); color: var(--paper); }
+.choice:has(input:checked) .ico { background: rgba(255,255,255,.18); color: var(--paper); }
+.choice:has(input:checked) .tick { background: var(--paper); border-color: var(--paper); color: var(--k); }
+.choice:has(input:focus-visible) { outline: 3px solid var(--fg); outline-offset: 3px; }
+.choice:has(input:disabled) { cursor: not-allowed; opacity: .45; transform: none; }
+.k-action { --k: var(--cobalt); --k-soft: var(--cobalt-soft); }
+.k-low { --k: var(--red); --k-soft: var(--red-soft); }
+.k-response { --k: var(--gold); --k-soft: var(--gold-soft); }
+.k-fusion { --k: var(--cobalt); --k-soft: var(--cobalt-soft); }
+.k-notify { --k: var(--teal); --k-soft: var(--teal-soft); }
+.k-stake { --k: var(--plum); --k-soft: var(--plum-soft); }
+
+/* fields */
+label, .label { font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.choice, .choice * { letter-spacing: normal; text-transform: none; }
+input[type=text], input[type=email], textarea { font: inherit; color: var(--fg); background: var(--paper); border: 2px solid var(--line); border-radius: 12px; padding: 11px 13px; width: 100%; min-width: 0; }
+input[type=text]:focus, input[type=email]:focus, textarea:focus { border-color: var(--cobalt); outline: none; box-shadow: 0 0 0 4px var(--cobalt-soft); }
+textarea { font-family: var(--font-mono); font-size: 12.5px; min-height: 140px; resize: vertical; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.mono { font-family: var(--font-mono); font-size: .9rem; }
+.rows { display: flex; flex-direction: column; gap: 10px; counter-reset: line; }
+.form-row, .person-row { position: relative; display: grid; gap: 10px; align-items: end; padding: 14px 14px 14px 46px; border-radius: 14px; background: var(--paper-2); border: 1px solid var(--line); counter-increment: line; }
+.form-row::before, .person-row::before { content: counter(line); position: absolute; left: 14px; top: 14px; width: 22px; height: 22px; border-radius: 50%; background: var(--sun); color: var(--sun-ink); font-weight: 800; font-size: .75rem; display: grid; place-items: center; }
+.form-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) auto; }
+.person-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) auto; }
+@media (max-width: 640px) { .form-row, .person-row { grid-template-columns: 1fr; } }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.row > * { min-width: 0; }
+.sub-block { display: flex; flex-direction: column; gap: 12px; }
+
+/* buttons */
+button { font: inherit; font-weight: 700; font-size: .9rem; border-radius: 12px; padding: 10px 16px; cursor: pointer; border: 2px solid var(--line); background: var(--paper); color: var(--fg); }
+button:hover { border-color: var(--cobalt); }
+button:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+button.primary { background: var(--cobalt); color: var(--cobalt-ink); border-color: var(--cobalt); }
+button.go { padding: 14px 24px; font-size: 1.05rem; font-family: var(--font-display); font-weight: 800; border-radius: 999px; background: var(--cobalt); color: var(--cobalt-ink); border-color: var(--cobalt); box-shadow: 0 6px 0 -1px var(--fg); }
+button.go:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 7px 0 -1px var(--fg); }
+button.go:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 2px 0 -1px var(--fg); }
+button.go.sun { background: var(--sun); color: var(--sun-ink); border-color: var(--sun); }
+button.link { border: none; background: none; color: var(--cobalt); padding: 6px 4px; }
+button.link:hover { text-decoration: underline; }
+button.icon { padding: 9px 11px; color: var(--muted); background: transparent; }
+button:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+button.small { padding: 5px 12px; font-size: .8rem; border-radius: 999px; }
+
+.msgs { display: flex; flex-direction: column; gap: 6px; }
+.msgs:empty { display: none; }
+.msg { font-size: .88rem; padding: 10px 14px; border-radius: 12px; font-weight: 600; }
+.msg.ok { background: var(--ok-soft); color: var(--ok); }
+.msg.warn { background: var(--warn-soft); color: var(--warn); }
+.msg.bad { background: var(--bad-soft); color: var(--bad); }
+.hint { font-size: .86rem; color: var(--muted); margin: 0; }
+code { font-family: var(--font-mono); font-size: .86em; background: var(--code-bg); padding: 1px 6px; border-radius: 5px; }
+
+/* results: letters */
+.sent { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+.sent-mark { font-family: var(--font-display); font-weight: 800; font-size: .9rem; letter-spacing: .2em; text-transform: uppercase; color: var(--red); border: 3px solid var(--red); border-radius: 10px; padding: 6px 14px; transform: rotate(-6deg); display: inline-block; }
+.files { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 14px; }
+.file { position: relative; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; min-width: 0; display: flex; flex-direction: column;
+  box-shadow: 0 1px 0 var(--line), 0 12px 24px -18px rgba(16,26,58,.5); }
+.file::before { content: ""; height: 6px; background: repeating-linear-gradient(-45deg, var(--k) 0 8px, var(--paper) 8px 12px); }
+.file-head { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; }
+.file-head .top { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.file-head .name { font-family: var(--font-mono); font-size: .86rem; font-weight: 500; overflow-wrap: anywhere; display: block; margin-top: 6px; }
+.file-head .meta { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+.tag { display: inline-block; font-size: .66rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; background: var(--k-soft); color: var(--k); }
+.postmark { flex: none; width: 54px; height: 54px; border-radius: 50%; border: 2px solid var(--k); color: var(--k); display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: .6rem; letter-spacing: .06em; text-transform: uppercase; text-align: center; line-height: 1.05; transform: rotate(-14deg); position: relative; }
+.postmark::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; border: 1px dashed var(--k); }
+.file pre { margin: 0; padding: 12px 16px; background: var(--code-bg); border-top: 1px dashed var(--line); font-family: var(--font-mono); font-size: 12px; max-height: 300px; overflow: auto; white-space: pre; }
+
+@media (prefers-reduced-motion: no-preference) {
+  button, .choice, input, .stamp { transition: background-color .15s, border-color .15s, transform .18s, box-shadow .15s; }
+  .step:not([hidden]) { animation: slide .35s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes slide { from { transform: translateX(14px); } to { transform: none; } }
+  .file { animation: drop .4s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes drop { from { transform: translateY(-10px) rotate(-1deg); } to { transform: none; } }
+  .sent-mark { animation: thunk .5s cubic-bezier(.3,1.6,.5,1) both; }
+  @keyframes thunk { from { transform: rotate(-6deg) scale(1.6); } to { transform: rotate(-6deg) scale(1); } }
+}
+
+/* ---- refined, professional finish over the airmail layout ---- */
+:root { --backdrop-a: #0f1d4d; --backdrop-b: #1e3aa8; --backdrop-glow: rgba(120, 150, 255, .35); --dot: rgba(35, 66, 214, .07); --wash: rgba(35, 66, 214, .07); --wash-2: rgba(226, 64, 47, .05); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --backdrop-a: #050a1c; --backdrop-b: #101c52; --backdrop-glow: rgba(90, 120, 255, .22); --dot: rgba(125, 147, 255, .08); --wash: rgba(125, 147, 255, .09); --wash-2: rgba(255, 122, 104, .05); } }
+:root[data-theme="dark"] { --backdrop-a: #050a1c; --backdrop-b: #101c52; --backdrop-glow: rgba(90, 120, 255, .22); --dot: rgba(125, 147, 255, .08); --wash: rgba(125, 147, 255, .09); --wash-2: rgba(255, 122, 104, .05); }
+body { padding-block: 22px; padding-left: max(22px, env(safe-area-inset-left, 0px)); padding-right: max(22px, env(safe-area-inset-right, 0px));
+  background-color: var(--backdrop-a);
+  background-image:
+    radial-gradient(900px 520px at 88% -8%, var(--backdrop-glow), transparent 70%),
+    radial-gradient(700px 480px at -6% 108%, var(--backdrop-glow), transparent 70%),
+    linear-gradient(140deg, var(--backdrop-a) 0%, var(--backdrop-b) 100%);
+  background-attachment: fixed; }
+/* animated paper: slowly drifting colour washes over a gently panning dot grid */
+.sheet { background-color: var(--paper); position: relative; isolation: isolate; overflow: hidden; }
+.sheet > * { position: relative; z-index: 1; }
+.sheet::before, .sheet::after { content: ""; position: absolute; pointer-events: none; z-index: 0; }
+.sheet::before { inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0);
+  background-size: 22px 22px; }
+.sheet::after { inset: -30%;
+  background-image:
+    radial-gradient(closest-side, var(--wash), transparent),
+    radial-gradient(closest-side, var(--wash-2), transparent),
+    radial-gradient(closest-side, var(--wash), transparent);
+  background-size: 55% 55%, 45% 45%, 40% 40%;
+  background-position: 85% 10%, 10% 90%, 50% 50%;
+  background-repeat: no-repeat;
+  filter: blur(8px); }
+@media (prefers-reduced-motion: no-preference) {
+  .sheet::before { animation: dots 60s linear infinite; }
+  .sheet::after { animation: drift 26s ease-in-out infinite alternate; }
+  @keyframes dots { from { background-position: 0 0; } to { background-position: 220px 110px; } }
+  @keyframes drift {
+    0%   { background-position: 85% 10%, 10% 90%, 50% 50%; }
+    33%  { background-position: 60% 30%, 30% 70%, 75% 20%; }
+    66%  { background-position: 90% 55%, 5% 40%, 30% 80%; }
+    100% { background-position: 70% 0%, 25% 100%, 60% 35%; }
+  }
+}
+.envelope { min-height: calc(100dvh - 44px); }
+@media (max-width: 560px) { body { padding-block: 10px; padding-left: max(10px, env(safe-area-inset-left, 0px)); padding-right: max(10px, env(safe-area-inset-right, 0px)); } .envelope { min-height: calc(100dvh - 20px); } }
+.envelope { padding: 6px; border-radius: 16px; box-shadow: 0 1px 2px rgba(16,26,58,.06), 0 12px 32px -18px rgba(16,26,58,.3);
+  background: repeating-linear-gradient(-45deg, var(--red) 0 10px, var(--paper) 10px 15px, var(--cobalt) 15px 25px, var(--paper) 25px 30px); }
+.sheet { border-radius: 11px; gap: 26px; }
+.kicker { color: var(--muted); letter-spacing: .14em; }
+h1 { font-weight: 700; font-size: clamp(1.9rem, 4.2vw, 2.7rem); letter-spacing: -.025em; line-height: 1.05; }
+.lede { font-size: .98rem; }
+.postmark-guid { transform: none; width: 156px; border-width: 1.5px; padding: 16px; }
+.postmark-guid::before { opacity: .45; }
+.stamp:not(:disabled):hover { transform: none; }
+.stamp.current, .stamp.done { opacity: 1; cursor: default; }
+.stamp.done:not(:disabled) { cursor: pointer; }
+.stamp.done { --c: var(--cobalt-soft); --c-ink: var(--cobalt); }
+.stamp.done .face::after { content: "\2713"; position: absolute; top: 4px; right: 6px; width: auto; height: auto; border: 0; box-shadow: none; transform: none; font-size: .8rem; font-weight: 700; }
+.step-head h2 { font-weight: 700; font-size: clamp(1.35rem, 3vw, 1.7rem); letter-spacing: -.015em; }
+.choice { background: var(--paper); border: 1px solid var(--line); min-height: 0; gap: 12px; border-radius: 14px; }
+.choice:hover { transform: none; border-color: var(--k); box-shadow: 0 2px 8px -4px rgba(16,26,58,.18); }
+.choice .ico { background: var(--k-soft); width: 44px; height: 44px; border-radius: 11px; }
+.choice .ico svg { width: 23px; height: 23px; }
+.choice b { font-weight: 700; font-size: 1.05rem; }
+.choice .d { opacity: 1; color: var(--muted); }
+.choice .tick { border-radius: 7px; width: 22px; height: 22px; border: 1.5px solid var(--line); }
+.choice:has(input:checked) { background: var(--k-soft); border-color: var(--k); color: var(--fg); box-shadow: 0 0 0 1px var(--k) inset; }
+.choice:has(input:checked) .ico { background: var(--paper); color: var(--k); }
+.choice:has(input:checked) .tick { background: var(--k); border-color: var(--k); color: var(--paper); }
+.choice:has(input:checked) .d { color: var(--muted); }
+button { border-width: 1px; font-weight: 600; border-radius: 10px; }
+button.go { padding: 11px 22px; font-family: var(--font-body); font-weight: 600; font-size: .95rem; border-radius: 10px; box-shadow: none; }
+button.go:hover:not(:disabled) { transform: none; box-shadow: none; filter: brightness(1.07); }
+button.go:active:not(:disabled) { transform: none; box-shadow: none; }
+button.go.sun { background: var(--cobalt); color: var(--cobalt-ink); border-color: var(--cobalt); }
+.form-row::before, .person-row::before { background: var(--cobalt-soft); color: var(--cobalt); border-radius: 6px; }
+.form-row, .person-row { border-radius: 12px; }
+input[type=text], input[type=email], textarea { border-width: 1px; border-radius: 9px; }
+.sent-mark { transform: none; animation: none; font-family: var(--font-body); font-size: .78rem; letter-spacing: .08em; padding: 5px 12px; border-width: 1.5px; border-radius: 999px; color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
+.file { box-shadow: 0 1px 2px rgba(16,26,58,.05); }
+.file::before { height: 4px; background: repeating-linear-gradient(-45deg, var(--k) 0 7px, var(--paper) 7px 10px); }
+.postmark { transform: none; width: 46px; height: 46px; border-width: 1.5px; font-size: .55rem; opacity: .9; }
+@media (prefers-reduced-motion: no-preference) {
+  .step:not([hidden]) { animation: fadeup .25s ease-out both; }
+  @keyframes fadeup { from { transform: translateY(4px); } to { transform: none; } }
+  .file { animation: none; }
+}
+/* ---- livelier, elevated motion ---- */
+:root { --wash: rgba(35, 66, 214, .16); --wash-2: rgba(226, 64, 47, .10); --dot: rgba(35, 66, 214, .10); --float: rgba(35, 66, 214, .16); --lift: 0 1px 2px rgba(16,26,58,.06), 0 14px 30px -14px rgba(16,26,58,.28); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --wash: rgba(125, 147, 255, .18); --wash-2: rgba(255, 122, 104, .10); --dot: rgba(125, 147, 255, .12); --float: rgba(125, 147, 255, .22); --lift: 0 1px 2px rgba(0,0,0,.4), 0 16px 32px -14px rgba(0,0,0,.7); } }
+:root[data-theme="dark"] { --wash: rgba(125, 147, 255, .18); --wash-2: rgba(255, 122, 104, .10); --dot: rgba(125, 147, 255, .12); --float: rgba(125, 147, 255, .22); --lift: 0 1px 2px rgba(0,0,0,.4), 0 16px 32px -14px rgba(0,0,0,.7); }
+.envelope { box-shadow: 0 2px 6px rgba(5,10,28,.25), 0 40px 80px -30px rgba(5,10,28,.7), 0 0 0 1px rgba(255,255,255,.08); background-size: 42.43px 42.43px; }
+.sheet > .floaters { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.floaters svg { position: absolute; bottom: -60px; color: var(--float); }
+.choice { box-shadow: var(--lift); }
+.choice:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(16,26,58,.08), 0 22px 40px -18px rgba(16,26,58,.38); }
+.choice:has(input:checked) { box-shadow: 0 0 0 1px var(--k) inset, var(--lift); }
+.rows .form-row, .rows .person-row { box-shadow: var(--lift); background: var(--paper); }
+.stamp { filter: drop-shadow(0 6px 10px rgba(16,26,58,.14)); }
+.stamp.current { filter: drop-shadow(0 8px 16px rgba(35,66,214,.35)); }
+.postmark-guid { background: var(--paper); box-shadow: var(--lift); }
+.file { box-shadow: var(--lift); }
+.file:hover { transform: translateY(-2px); }
+button.go:not(:disabled) { box-shadow: 0 10px 22px -10px var(--cobalt); }
+@media (prefers-reduced-motion: no-preference) {
+  .envelope { animation: stripes 2.4s linear infinite; }
+  @keyframes stripes { to { background-position: 42.43px 0; } }
+  .sheet::after { animation: drift 12s ease-in-out infinite alternate, pulse 7s ease-in-out infinite; }
+  .sheet::before { animation: dots 30s linear infinite; }
+  @keyframes pulse { 0%, 100% { opacity: .8; } 50% { opacity: 1; } }
+  .floaters svg { animation: rise var(--dur, 18s) linear infinite; animation-delay: var(--delay, 0s); }
+  @keyframes rise {
+    0%   { transform: translate(0, 0) rotate(var(--r0, -8deg)); opacity: 0; }
+    10%  { opacity: 1; }
+    50%  { transform: translate(var(--dx, 30px), -55vh) rotate(var(--r1, 6deg)); }
+    90%  { opacity: 1; }
+    100% { transform: translate(0, -115vh) rotate(var(--r0, -8deg)); opacity: 0; }
+  }
+  .step:not([hidden]) > * { animation: rise-in .45s cubic-bezier(.2,.8,.2,1) both; }
+  .step:not([hidden]) > *:nth-child(2) { animation-delay: .06s; }
+  .step:not([hidden]) > *:nth-child(3) { animation-delay: .12s; }
+  .step:not([hidden]) > *:nth-child(4) { animation-delay: .18s; }
+  @keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .choices .choice { animation: rise-in .45s cubic-bezier(.2,.8,.2,1) both; }
+  .choices .choice:nth-child(2) { animation-delay: .08s; }
+  .choices .choice:nth-child(3) { animation-delay: .16s; }
+  .files .file { animation: rise-in .4s cubic-bezier(.2,.8,.2,1) both; }
+}
+</style>
+</head>
+<body>
+<div class="envelope">
+  <div class="sheet">
+    <div class="floaters" aria-hidden="true"></div>
+    <div class="letterhead">
+      <div>
+        <p class="kicker">Notifications · Fusion · Stakeholders</p>
+        <h1>Exxat Mail <em>Builder</em></h1>
+        <p class="lede">Pick a notification, add your forms, and get ready-to-upload files. Every Fusion file gets its own new GUID.</p>
+      </div>
+      <div class="postmark-guid" aria-live="polite">
+        <span class="pm-label">Fresh GUID</span>
+        <span class="guid" id="guid-now"></span>
+        <span class="pm-btns"><button id="guid-next">New</button><button id="guid-copy">Copy</button></span>
+      </div>
+    </div>
+
+    <nav class="stamps" aria-label="Steps">
+      <button class="stamp" data-go="1" type="button"><span class="face"><span class="n">1</span><span class="t">Notification</span></span></button>
+      <button class="stamp" data-go="2" type="button"><span class="face"><span class="n">2</span><span class="t">Forms</span></span></button>
+      <button class="stamp" data-go="3" type="button"><span class="face"><span class="n">3</span><span class="t">Files</span></span></button>
+      <button class="stamp" data-go="4" type="button"><span class="face"><span class="n">4</span><span class="t">Details</span></span></button>
+    </nav>
+
+    <!-- Step 1 -->
+    <section class="step" id="s1" data-step="1">
+      <div class="step-head"><h2>Select notifications</h2><p>Choose the notification emails to set up. You can choose more than one.</p></div>
+      <div class="choices">
+        <label class="choice k-action"><input type="checkbox" id="n-action" value="action">
+          <span class="tick"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg></span>
+          <span><b>Action notification</b><span class="d">Sent when the preceptor submits the form (Alert.Admin)</span></span></label>
+        <label class="choice k-low"><input type="checkbox" id="n-low" value="low">
+          <span class="tick"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l6 6 4-4 6 7"/><path d="M15 15h5v-5"/></svg></span>
+          <span><b>Low Score</b><span class="d">Sent when a score falls below the threshold</span></span></label>
+        <label class="choice k-response"><input type="checkbox" id="n-resp" value="response">
+          <span class="tick"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg></span>
+          <span><b>Response based</b><span class="d">Lists selected answers entered on the form</span></span></label>
+      </div>
+      <div class="nav"><span class="why" id="why-1">Select at least one notification.</span><button class="go" id="next-1" disabled>Continue</button></div>
+    </section>
+
+    <!-- Step 2 -->
+    <section class="step" id="s2" data-step="2" hidden>
+      <div class="step-head"><h2>Add forms</h2><p id="s2-sub"></p></div>
+      <div id="s2-body" class="sub-block">
+        <div class="rows" id="form-rows"></div>
+        <div class="row">
+          <button id="add-form">+ Add form</button>
+          <button class="link" id="toggle-paste">Paste a list instead</button>
+        </div>
+        <div class="field" id="paste-box" hidden>
+          <label for="paste">One form per line: Form name | Feature ID</label>
+          <textarea id="paste" spellcheck="false" placeholder="Form name | FEATUREID"></textarea>
+          <div class="row"><button id="paste-apply">Add these forms</button></div>
+        </div>
+        <div class="msgs" id="s2-msgs"></div>
+      </div>
+      <div class="nav"><button class="link" data-back="1">← Back</button><button class="go" id="next-2" disabled>Continue</button></div>
+    </section>
+
+    <!-- Step 3 -->
+    <section class="step" id="s3" data-step="3" hidden>
+      <div class="step-head"><h2>Choose files</h2><p>Select the files to generate for these forms.</p></div>
+      <div class="choices" id="s3-body">
+        <label class="choice k-fusion"><input type="checkbox" id="f-fusion">
+          <span class="tick"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.8"/><path d="M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6"/><path d="M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8"/></svg></span>
+          <span><b>Fusion file</b><span class="d">Mongo email template for each form, with a new GUID</span></span></label>
+        <label class="choice k-notify"><input type="checkbox" id="f-notify">
+          <span class="tick"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 004 0"/></svg></span>
+          <span><b>Notification file</b><span class="d" id="f-notify-sub">Action notification setup for each form</span></span></label>
+        <label class="choice k-stake"><input type="checkbox" id="f-stake">
+          <span class="tick"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.2c2.4-.3 4 1.3 4.5 4.3"/></svg></span>
+          <span><b>Stakeholder file</b><span class="d">One file per person, listing every form</span></span></label>
+      </div>
+      <div class="nav"><button class="link" data-back="2">← Back</button><button class="go" id="next-3" disabled>Continue</button></div>
+    </section>
+
+    <!-- Step 4 -->
+    <section class="step" id="s4" data-step="4" hidden>
+      <div class="step-head"><h2>Review details</h2><p id="s4-sub">Add the remaining details, then generate the files.</p></div>
+      <div id="s4-body" class="sub-block" style="gap:20px;">
+        <div id="people-box" class="sub-block" hidden>
+          <div><p class="label" style="margin:0;">Stakeholders</p><p class="hint">They go into the stakeholder files and into the stakeholders list of the notification files.</p></div>
+          <div class="rows" id="people-rows"></div>
+          <div class="row"><button id="add-person">+ Add stakeholder</button></div>
+        </div>
+        <div class="field" id="email-box" hidden>
+          <label for="email-tpl">Email template ID in the notification file</label>
+          <input type="text" id="email-tpl" class="mono" spellcheck="false" placeholder="Leave empty to use each form's own Alert.Admin.<feature ID>">
+          <p class="hint">Leave it empty to point each form at its own Fusion file. Fill it in (for example <code>Alert.Admin.&lt;one form's feature ID&gt;</code>) to point every form at one shared template.</p>
+        </div>
+        <p class="hint" id="nothing-more" hidden>Nothing else is needed for Fusion files. Press the button to create them.</p>
+        <div class="msgs" id="s4-msgs"></div>
+      </div>
+      <div class="nav"><button class="link" data-back="3">← Back</button><button class="go sun" id="generate">Generate files</button></div>
+    </section>
+
+    <!-- Results -->
+    <section class="step" id="out" data-step="5" hidden>
+      <div class="sent">
+        <div class="step-head"><h2 id="out-title">Your files</h2><p>Download them all at once, or one by one.</p></div>
+        <span class="sent-mark">Ready to upload</span>
+      </div>
+      <div class="row"><button class="go" id="dl-all">Download all (zip)</button><button class="link" id="start-over">Start a new batch</button></div>
+      <div class="msgs" id="out-msgs"></div>
+      <div class="files" id="files"></div>
+      <div class="nav"><button class="link" data-back="4">← Back to details</button><span></span></div>
+    </section>
+  </div>
+</div>
+
+<script type="application/json" id="data-action">"{\n    \"name\": \"Alert.Admin.OG1UV26TJU\",\n    \"description\": null,\n    \"categoryId\": \"Evaluation\",\n    \"notificationId\": \"Evaluation.Action.Notification\",\n    \"subject\": \"{{{FeatureShortLabel}}} OG1 Uterus - Ver 2026  is submitted to you\",\n    \"isDefault\": false,\n    \"layoutId\": \"University logo on the header and Exxat logo on the footer\",\n    \"content\": [\n        {\n            \"Name\": \"Body\",\n            \"Description\": \"This is template body\",\n            \"Content\": \"<br> <br>  Hi {{{RecieverName}}}, <br><br> The <b>{{{FeatureShortLabel}}}<\/b> is submitted by <b>{{{SenderFirstName}}}<\/b> <b>{{{SenderLastName}}}<\/b>. Please login to your account to perform the next steps<br> <br> This is related to the student <b>{{{TargetName}}}<\/b> for course <b>{{{CourseName}}}<\/b>, rotation <\/b>{{{RotationName}}}, <b>{{{PlacementStartDate}}} and {{{PlacementEndDate}}}.<\/b> <br><br>Thank you.<br>\",\n            \"Order\": 2\n        },\n        {\n            \"Name\": \"Header\",\n            \"Description\": \"This is template header\",\n            \"Content\": \"<div class=''><left><img alt='University logo' height='100' src='{{{TenantLogo}}}' style='width: auto;max-height: 100px;'><\/left><\/div>\",\n            \"Order\": 1\n        },\n        {\n            \"Name\": \"Footer\",\n            \"Description\": \"This is template footer\",\n            \"Content\": \"<footer><img alt='Exxat logo' src='https://exxatfusion.blob.core.windows.net/asset/exxat-pink-small.png'><br/><\/footer>\",\n            \"Order\": 3\n        }\n    ],\n    \"dynamicTemplateNames\": [],\n    \"dataJsonSchema\": \"{}\",\n    \"securityPredicate\": {\n        \"tenantId\": \"Exxat-Configuration\",\n        \"owningOrganizationUnit\": \"D062\"\n    },\n    \"createdBy\": null,\n    \"updatedBy\": null,\n    \"createdDatetime\": \"2025-11-28T12:08:53+00:00\",\n    \"updatedDatetime\": null,\n    \"fileCollectionKey\": null,\n    \"partitionKey\": \"Exxat-ConfigurationD062\",\n    \"entityName\": null,\n    \"id\": \"fc7e6c97-0fae-483c-8b7d-e97566469a0a\",\n    \"_id\": \"fc7e6c97-0fae-483c-8b7d-e97566469a0a\",\n    \"type\": \"Email\"\n}"</script>
+<script type="application/json" id="data-low">"{\n    \"name\": \"Exxat-Configuration.D062.Exxat.Student-Evaluation.OG1UV26TJU\",\n    \"description\": null,\n    \"categoryId\": \"Evaluation\",\n    \"notificationId\": \"Immediate.LowScore\",\n    \"subject\": \"OG1 Uterus - Ver 2026 - Low Score Alert for {{{FirstName}}} {{{LastName}}}\",\n    \"isDefault\": false,\n    \"layoutId\": \"University logo on the header and Exxat logo on the footer\",\n    \"content\": [\n        {\n            \"Name\": \"Body\",\n            \"Description\": \"This is template body\",\n            \"Content\": \"Hello {{{RecieverName}}},<br><br>This notification is to inform you that {{{FirstName}}} {{{LastName}}} has received a score below the defined threshold value of <b>{{{Value}}}<\/b> on <b>OG1 Uterus - Ver 2026<\/b> form.<h3>Evaluation Details<\/h3><ul style='padding-left:30px'><li><b>Course:<\/b> {{{CourseCode}}} - {{{CourseName}}}<li><b>Clinical Rotation:<\/b> {{{RotationName}}} ({{{RotationStartDate}}} - {{{RotationEndDate}}})<li><b>Clinical Site: <\/b>{{{LocationName}}} - {{{SettingName}}}<\/ul>We recommend reviewing this feature to determine any required follow-up actions in accordance with your program’s academic and clinical policies.<br><br>If you have any questions or require additional context, please refer to the feature details within the system.<br><br>Thank you,\",\n            \"Order\": 2\n        },\n        {\n            \"Name\": \"Header\",\n            \"Description\": \"This is template header\",\n            \"Content\": \"<div class=''><left><img alt='University logo' height='100' src='{{{TenantLogo}}}' style='width: auto;max-height: 100px;'><\/left><\/div>\",\n            \"Order\": 1\n        },\n        {\n            \"Name\": \"Footer\",\n            \"Description\": \"This is template footer\",\n            \"Content\": \"<footer><img alt='Exxat logo' src='https://exxatfusion.blob.core.windows.net/asset/exxat-pink-small.png'><\/footer>\",\n            \"Order\": 3\n        }\n    ],\n    \"dynamicTemplateNames\": [],\n    \"dataJsonSchema\": \"{}\",\n    \"securityPredicate\": {\n        \"tenantId\": \"Exxat-Configuration\",\n        \"owningOrganizationUnit\": \"D062\"\n    },\n    \"createdBy\": null,\n    \"updatedBy\": null,\n    \"createdDatetime\": \"2026-02-03T10:06:08+05:30\",\n    \"updatedDatetime\": null,\n    \"fileCollectionKey\": null,\n    \"partitionKey\": \"Exxat-ConfigurationD062\",\n    \"entityName\": null,\n    \"id\": \"6c1507ce-2796-460d-af43-fa1cd41722c5\",\n    \"_id\": \"6c1507ce-2796-460d-af43-fa1cd41722c5\",\n    \"type\": \"Email\"\n}"</script>
+<script type="application/json" id="data-notify">"{\n    \"label\": \"OG1 Uterus - Ver 2026\",\n    \"featureId\": \"Exxat.Student-Evaluation.OG1UV26TJU\",\n    \"fields\": [],\n    \"reviewTemplatesByAction\": {},\n    \"actionNotification\": {\n        \"category\": \"Evaluation\",\n        \"stakeholders\": [],\n        \"actions\": [\n            {\n                \"emailTemplateId\": \"Alert.Admin.OG1UV26TJU\",\n                \"actionId\": \"Action.OG1UV26TJU.DelegateSubmit\",\n                \"notifyUser\": [\n                    \"Faculty\",\n                    \"Stakeholder\"\n                ]\n            }\n        ]\n    },\n    \"notificationType\": \"Email\",\n    \"entityName\": \"Exxat.Evaluation.Notification.Service.API.Data.Models.Notification.EvaluationNotification\",\n    \"partitionKey\": \"Exxat-Configuration\",\n    \"securityContext\": {\n        \"tenantId\": \"Exxat-Configuration\",\n        \"owningOrganizationUnit\": \"D062\"\n    }\n}"</script>
+<script type="application/json" id="data-response">"{\n    \"name\": \"Alert.Admin.SEISS_GSU\",\n    \"description\": null,\n    \"categoryId\": \"Evaluation\",\n    \"notificationId\": \"Evaluation.Response.Request\",\n    \"subject\": \"Response based notification - Student Evaluation of Internship Site & Supervisor\",\n    \"isDefault\": false,\n    \"layoutId\": \"University logo on the header and Exxat logo on the footer\",\n    \"content\": [\n        {\n            \"Name\": \"Body\",\n            \"Description\": \"This is template body\",\n            \"Content\": \"<p>Hello,<br /><br />Student: {{{TargetName}}} <br /><br /> Site Name: {{{SiteName}}} <br /><br /> Placement Dates: {{{PlacementStartDate}}} - {{{PlacementEndDate}}} <br /><br /> Please be aware that the following responses were entered on the <strong>{{{FeatureShortLabel}}}<\/strong>. <br /><br /> [$FieldNotificationTable$] <br /><br />Thank You.<\/p>\",\n            \"Order\": 2\n        },\n        {\n            \"Name\": \"Header\",\n            \"Description\": \"This is template header\",\n            \"Content\": \"<div class=''><left><img alt='University logo' height='100' src='{{{TenantLogo}}}' style='width: auto;max-height: 100px;'><\/left><\/div>\",\n            \"Order\": 1\n        },\n        {\n            \"Name\": \"Footer\",\n            \"Description\": \"This is template footer\",\n            \"Content\": \"<footer><img alt='Exxat logo' src='https://exxatfusion.blob.core.windows.net/asset/exxat-pink-small.png'><br/><\/footer>\",\n            \"Order\": 3\n        }\n    ],\n    \"dynamicTemplateNames\": [],\n    \"dataJsonSchema\": \"{}\",\n    \"securityPredicate\": {\n        \"tenantId\": \"Exxat-Configuration\",\n        \"owningOrganizationUnit\": \"D062\"\n    },\n    \"createdBy\": null,\n    \"updatedBy\": null,\n    \"createdDatetime\": \"2024-09-22T05:48:04.2440928Z\",\n    \"updatedDatetime\": null,\n    \"fileCollectionKey\": null,\n    \"partitionKey\": \"Exxat-ConfigurationD062\",\n    \"entityName\": null,\n    \"id\": \"700cd39e-26f6-4a1e-b84c-fe0c3675c9d6\",\n    \"_id\": \"700cd39e-26f6-4a1e-b84c-fe0c3675c9d6\",\n    \"type\": \"Email\"\n}"</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  // example files; each uses this feature ID and form name, which get replaced
+  // [feature ID, form name] that each example uses
+  const EX = {
+    action: ["OG1UV26TJU", "OG1 Uterus - Ver 2026"],
+    low: ["OG1UV26TJU", "OG1 Uterus - Ver 2026"],
+    response: ["SEISS_GSU", "Student Evaluation of Internship Site & Supervisor"],
+    notify: ["OG1UV26TJU", "OG1 Uterus - Ver 2026"],
+  };
+  const FUSION = {
+    action: { kind: "Fusion · Action", folder: "Fusion_Action", suffix: "Mongo_Action" },
+    low: { kind: "Fusion · Low Score", folder: "Fusion_LowScore", suffix: "LowScore" },
+    response: { kind: "Fusion · Response", folder: "Fusion_Response", suffix: "Response" },
+  };
+  const TPL = {
+    action: JSON.parse(JSON.parse($("data-action").textContent)),
+    low: JSON.parse(JSON.parse($("data-low").textContent)),
+    notify: JSON.parse(JSON.parse($("data-notify").textContent)),
+    response: JSON.parse(JSON.parse($("data-response").textContent)),
+  };
+  const PREFIX = "Exxat.Student-Evaluation.";
+  const STAKE_BASE = {
+    entityName: "Exxat.Services.HyperDrive.Entity.Models.Users.StakeHolder",
+    appId: "Exxat.Evaluation", userType: "Administrator",
+    notifications: ["LowScore", "Review", "Delegator"], teams: [{ teamId: "Team.Admin" }],
+    securityContext: { tenantId: "Exxat-Configuration", owningOrganizationUnit: "D062" },
+    partitionKey: "Exxat-Configuration",
+  };
+
+  // ---------- helpers ----------
+  function newGuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+    const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  }
+  const shortId = (s) => s.trim().replace(/^.*\./, "");
+  const json = (o) => JSON.stringify(o, null, 4) + "\n";
+  function replaceDeep(v, pairs) {
+    if (typeof v === "string") { let s = v; for (const [a, b] of pairs) s = s.split(a).join(b); return s; }
+    if (Array.isArray(v)) return v.map((x) => replaceDeep(x, pairs));
+    if (v && typeof v === "object") { const o = {}; for (const k of Object.keys(v)) o[k] = replaceDeep(v[k], pairs); return o; }
+    return v;
+  }
+  function msg(box, kind, text) { const d = document.createElement("div"); d.className = "msg " + kind; d.textContent = text; box.appendChild(d); }
+  const code = (name, id) => (name.trim().split(/\s+/)[0] || id).replace(/[^A-Za-z0-9_-]/g, "") || id;
+  async function copyText(text, btn) {
+    const old = btn.textContent;
+    try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; }
+    catch (e) { btn.textContent = "Select the text to copy"; }
+    setTimeout(() => (btn.textContent = old), 1800);
+  }
+  let downloads = null;
+  if (window.claude && window.claude.use) window.claude.use("downloads").then((d) => { downloads = d; }).catch(() => {});
+  async function save(filename, data, box) {
+    if (!downloads) {
+      // standalone site: a normal browser download
+      const blob = data instanceof Blob ? data : new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      return;
+    }
+    try { await downloads.save({ filename, data }); }
+    catch (e) { if (e && e.code !== "declined") msg(box, "bad", "The file wasn't saved (" + (e.code || "error") + ")."); }
+  }
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem("ftb2:" + k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem("ftb2:" + k, JSON.stringify(v)); } catch (e) {} },
+  };
+
+  // ---------- step 1 ----------
+  const nAction = $("n-action"), nLow = $("n-low");
+  const nResp = $("n-resp");
+  const picked = () => ({ action: nAction.checked, low: nLow.checked, response: nResp.checked });
+
+  // ---------- step 2: forms ----------
+  const formRows = $("form-rows");
+  function addFormRow(id = "", name = "") {
+    const r = document.createElement("div"); r.className = "form-row";
+    const n = formRows.children.length + 1;
+    r.innerHTML = `
+      <div class="field"><label>Feature ID</label><input type="text" class="mono f-id" spellcheck="false" placeholder="OG2O26TJU"></div>
+      <div class="field"><label>Form name</label><input type="text" class="f-name" placeholder="OG2 Ovaries - Ver 2026"></div>
+      <button class="icon" title="Remove this form" aria-label="Remove this form">✕</button>`;
+    const [idIn, nameIn] = r.querySelectorAll("input");
+    idIn.id = "fid-" + n + "-" + Date.now(); nameIn.id = "fname-" + n + "-" + Date.now();
+    r.querySelectorAll("label")[0].htmlFor = idIn.id; r.querySelectorAll("label")[1].htmlFor = nameIn.id;
+    idIn.value = id; nameIn.value = name;
+    r.querySelector("button").addEventListener("click", () => { r.remove(); if (!formRows.children.length) addFormRow(); refresh(); });
+    r.addEventListener("input", refresh);
+    formRows.appendChild(r);
+  }
+  function readForms() {
+    return [...formRows.querySelectorAll(".form-row")].map((r) => ({
+      id: shortId(r.querySelector(".f-id").value), name: r.querySelector(".f-name").value.trim(),
+    })).filter((f) => f.id || f.name);
+  }
+  function setForms(list) {
+    formRows.innerHTML = "";
+    list.forEach(([name, id]) => addFormRow(id, name));
+    if (!list.length) addFormRow();
+    refresh();
+  }
+  $("add-form").addEventListener("click", () => { addFormRow(); refresh(); formRows.lastChild.querySelector("input").focus(); });
+  $("toggle-paste").addEventListener("click", () => { $("paste-box").hidden = !$("paste-box").hidden; });
+  $("paste-apply").addEventListener("click", () => {
+    const list = [];
+    $("paste").value.split(/\r?\n/).forEach((line) => {
+      const cut = line.lastIndexOf("|"); if (cut < 0) return;
+      const name = line.slice(0, cut).trim(), id = shortId(line.slice(cut + 1));
+      if (name && id) list.push([name, id]);
+    });
+    const existing = readForms().filter((f) => f.id && f.name).map((f) => [f.name, f.id]);
+    setForms(existing.concat(list));
+    $("paste").value = ""; $("paste-box").hidden = true;
+  });
+
+  // ---------- step 4: people ----------
+  const peopleRows = $("people-rows");
+  function addPerson(p = {}) {
+    const r = document.createElement("div"); r.className = "person-row";
+    const k = Date.now() + "-" + peopleRows.children.length;
+    r.innerHTML = `
+      <div class="field"><label for="pf-${k}">First name</label><input type="text" id="pf-${k}" class="p-first"></div>
+      <div class="field"><label for="pl-${k}">Last name</label><input type="text" id="pl-${k}" class="p-last"></div>
+      <div class="field"><label for="pe-${k}">Email address</label><input type="email" id="pe-${k}" class="p-email" spellcheck="false"></div>
+      <button class="icon" title="Remove this person" aria-label="Remove this person">✕</button>`;
+    r.querySelector(".p-first").value = p.firstName || "";
+    r.querySelector(".p-last").value = p.lastName || "";
+    r.querySelector(".p-email").value = p.email || "";
+    r.querySelector("button").addEventListener("click", () => { r.remove(); if (!peopleRows.children.length) addPerson(); savePeople(); });
+    r.addEventListener("input", savePeople);
+    peopleRows.appendChild(r);
+  }
+  function readPeople() {
+    return [...peopleRows.querySelectorAll(".person-row")].map((r) => ({
+      firstName: r.querySelector(".p-first").value.trim(),
+      lastName: r.querySelector(".p-last").value.trim(),
+      email: r.querySelector(".p-email").value.trim(),
+    })).filter((p) => p.firstName || p.lastName || p.email);
+  }
+  function savePeople() { store.set("people", readPeople()); }
+  $("add-person").addEventListener("click", () => { addPerson(); peopleRows.lastChild.querySelector("input").focus(); });
+  (store.get("people") || [{}]).forEach(addPerson);
+  if (!peopleRows.children.length) addPerson();
+
+  // ---------- step flow (one step at a time) ----------
+  let cur = 1;
+  function state() {
+    const p = picked(), any = p.action || p.low || p.response;
+    const forms = readForms(), okForms = forms.filter((f) => f.id && f.name);
+    const seen = new Set(), dups = new Set();
+    okForms.forEach((f) => { if (seen.has(f.id)) dups.add(f.id); seen.add(f.id); });
+    const files = { fusion: $("f-fusion").checked, notify: $("f-notify").checked, stake: $("f-stake").checked };
+    return { p, any, forms, okForms, dups, files, anyFile: files.fusion || files.notify || files.stake };
+  }
+  const ready = (n, st) => n === 1 ? st.any : n === 2 ? st.okForms.length > 0 && !st.dups.size : n === 3 ? st.anyFile : true;
+  function canReach(n, st) { for (let i = 1; i < n; i++) if (!ready(i, st)) return false; return true; }
+  function updateStamps(st) {
+    document.querySelectorAll(".stamp").forEach((b) => {
+      const n = +b.dataset.go;
+      b.classList.toggle("current", n === cur);
+      b.classList.toggle("done", n !== cur && ready(n, st) && canReach(n, st) && (n < cur || cur === 5));
+      b.disabled = !(canReach(n, st) && n !== cur);
+      b.setAttribute("aria-current", n === cur ? "step" : "false");
+    });
+  }
+  function go(n) {
+    const st = state();
+    if (n <= 4 && !canReach(n, st)) return;
+    cur = n;
+    document.querySelectorAll(".step").forEach((s) => { s.hidden = +s.dataset.step !== n; });
+    updateStamps(st);
+    const top = document.querySelector(".envelope").getBoundingClientRect().top;
+    if (top < 0) window.scrollBy({ top: top - 12, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+  document.querySelectorAll(".stamp").forEach((b) => b.addEventListener("click", () => go(+b.dataset.go)));
+  document.querySelectorAll("[data-back]").forEach((b) => b.addEventListener("click", () => go(+b.dataset.back)));
+  [1, 2, 3].forEach((n) => $("next-" + n).addEventListener("click", () => go(n + 1)));
+
+  function refresh() {
+    // a notification file only exists for the action notification
+    const pa = picked().action;
+    $("f-notify").disabled = !pa;
+    if (!pa) $("f-notify").checked = false;
+    $("f-notify-sub").textContent = pa ? "Action notification setup for each form" : "Only for the Action notification";
+
+    const st = state();
+    $("next-1").disabled = !st.any;
+    $("why-1").textContent = st.any ? [st.p.action && "Action notification", st.p.low && "Low Score", st.p.response && "Response based"].filter(Boolean).join(" + ") + " selected." : "Select at least one notification.";
+    const which = [st.p.action && "Action notification", st.p.low && "Low Score", st.p.response && "Response based notification"].filter(Boolean).join(", ");
+    $("s2-sub").textContent = `Enter the feature ID and form name for each form that needs the ${which || "notification"}.`;
+
+    const box = $("s2-msgs"); box.innerHTML = "";
+    if (st.dups.size) msg(box, "bad", `Used more than once: ${[...st.dups].join(", ")}.`);
+    const half = st.forms.filter((f) => !(f.id && f.name)).length;
+    if (half) msg(box, "warn", `${half} form${half > 1 ? "s are" : " is"} missing a feature ID or a name and will be skipped.`);
+    if (st.okForms.length) msg(box, "ok", `${st.okForms.length} form${st.okForms.length > 1 ? "s" : ""} ready.`);
+    $("next-2").disabled = !ready(2, st);
+    $("next-3").disabled = !ready(3, st);
+
+    $("people-box").hidden = !(st.files.notify || st.files.stake);
+    $("email-box").hidden = !st.files.notify;
+    $("nothing-more").hidden = st.files.notify || st.files.stake;
+    updateStamps(st);
+  }
+  [nAction, nLow, nResp, $("f-fusion"), $("f-notify"), $("f-stake")].forEach((el) => el.addEventListener("change", refresh));
+  setForms([]);
+
+  // ---------- create ----------
+  let made = [];
+  $("generate").addEventListener("click", () => {
+    const box = $("s4-msgs"); box.innerHTML = "";
+    const p = picked();
+    const forms = readForms().filter((f) => f.id && f.name);
+    const files = { fusion: $("f-fusion").checked, notify: $("f-notify").checked, stake: $("f-stake").checked };
+    const people = readPeople();
+    if ((files.notify || files.stake) && !people.length) { msg(box, "bad", "Add at least one stakeholder: first name, last name and email address."); return; }
+    const badPerson = people.find((x) => !x.firstName || !x.lastName || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.email));
+    if ((files.notify || files.stake) && badPerson) { msg(box, "bad", "Every stakeholder needs a first name, a last name and a valid email address."); return; }
+    const seen = new Set();
+    for (const f of forms) { if (seen.has(f.id)) { msg(box, "bad", `Feature ID ${f.id} is used more than once.`); return; } seen.add(f.id); }
+
+    made = [];
+    const guids = new Set();
+    const fresh = () => { let g; do { g = newGuid(); } while (guids.has(g)); guids.add(g); return g; };
+    const kinds = [p.action && "action", p.low && "low", p.response && "response"].filter(Boolean);
+
+    if (files.fusion) for (const k of kinds) for (const f of forms) {
+      const o = replaceDeep(TPL[k], [[EX[k][0], f.id], [EX[k][1], f.name]]);
+      const g = fresh(); o.id = g; o._id = g;
+      made.push({ kind: FUSION[k].kind, folder: FUSION[k].folder,
+        file: `${code(f.name, f.id)}_${FUSION[k].suffix}.json`, text: json(o), form: f, guid: g });
+    }
+    if (files.notify) {
+      const shared = $("email-tpl").value.trim();
+      const stakeholders = people.map((x) => ({ email: x.email, firstName: x.firstName, lastName: x.lastName }));
+      for (const f of forms) {
+        const o = replaceDeep(TPL.notify, [[EX.notify[0], f.id], [EX.notify[1], f.name]]);
+        o.actionNotification.stakeholders = stakeholders;
+        if (shared) o.actionNotification.actions.forEach((a) => { a.emailTemplateId = shared; });
+        made.push({ kind: "Notification", folder: "Notification", file: `${code(f.name, f.id)}_Notification.json`, text: json(o), form: f });
+      }
+    }
+    if (files.stake) for (const x of people) {
+      const o = { firstName: x.firstName, lastName: x.lastName, email: x.email, entityName: STAKE_BASE.entityName,
+        features: forms.map((f) => ({ featureId: PREFIX + f.id })), appId: STAKE_BASE.appId, userType: STAKE_BASE.userType,
+        notifications: STAKE_BASE.notifications.slice(), teams: STAKE_BASE.teams.map((t) => ({ ...t })),
+        securityContext: { ...STAKE_BASE.securityContext }, partitionKey: STAKE_BASE.partitionKey };
+      made.push({ kind: "Stakeholder", folder: "Stakeholder", file: `Stakeholder_${(x.firstName + "_" + x.lastName).replace(/[^A-Za-z0-9_-]/g, "")}.json`, text: json(o), person: x, count: forms.length });
+    }
+    // within one folder, two forms whose names start with the same word would collide
+    const names = new Map();
+    made.forEach((m) => { const key = m.folder + "/" + m.file; const n = names.get(key) || 0; names.set(key, n + 1); if (n) m.file = m.file.replace(/\.json$/, `_${m.form ? m.form.id : n + 1}.json`); });
+    renderFiles();
+  });
+
+  const KIND = {
+    Fusion_Action: ["k-action", "New<br>GUID"], Fusion_LowScore: ["k-low", "New<br>GUID"], Fusion_Response: ["k-response", "New<br>GUID"],
+    Notification: ["k-notify", "Notify"], Stakeholder: ["k-stake", "People"],
+  };
+  function renderFiles() {
+    const list = $("files"); list.innerHTML = ""; $("out-msgs").innerHTML = "";
+    made.forEach((m) => {
+      const [kcls, mark] = KIND[m.folder] || ["", ""];
+      const card = document.createElement("article"); card.className = "file " + kcls;
+      const head = document.createElement("div"); head.className = "file-head";
+      const top = document.createElement("div"); top.className = "top";
+      const left = document.createElement("div"); left.style.minWidth = "0";
+      const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = m.kind;
+      const nm = document.createElement("span"); nm.className = "name"; nm.textContent = m.file;
+      const meta = document.createElement("div"); meta.className = "meta";
+      meta.textContent = m.form ? `${m.form.name} · ${m.form.id}${m.guid ? " · " + m.guid : ""}` : `${m.person.email} · ${m.count} feature IDs`;
+      left.append(tag, nm, meta);
+      const pm = document.createElement("div"); pm.className = "postmark"; pm.innerHTML = mark; pm.setAttribute("aria-hidden", "true");
+      top.append(left, pm);
+      const actions = document.createElement("div"); actions.className = "row"; actions.style.gap = "6px";
+      const view = document.createElement("button"); view.className = "small"; view.textContent = "Show";
+      const cp = document.createElement("button"); cp.className = "small"; cp.textContent = "Copy";
+      const dl = document.createElement("button"); dl.className = "small"; dl.textContent = "Download";
+      actions.append(view, cp, dl);
+      head.append(top, actions);
+      const pre = document.createElement("pre"); pre.textContent = m.text; pre.hidden = true;
+      view.addEventListener("click", () => { pre.hidden = !pre.hidden; view.textContent = pre.hidden ? "Show" : "Hide"; });
+      cp.addEventListener("click", () => copyText(m.text, cp));
+      dl.addEventListener("click", () => save(m.file, m.text, $("out-msgs")));
+      card.append(head, pre); list.appendChild(card);
+    });
+    const counts = {};
+    made.forEach((m) => { counts[m.kind] = (counts[m.kind] || 0) + 1; });
+    $("out-title").textContent = `${made.length} file${made.length === 1 ? "" : "s"} ready`;
+    msg($("out-msgs"), "ok", Object.entries(counts).map(([k, n]) => `${n} ${k}`).join(" · ") + (made.some((m) => m.guid) ? " · every Fusion file has a different new GUID" : ""));
+    go(5);
+  }
+  $("dl-all").addEventListener("click", async () => {
+    if (!made.length) return;
+    if (!window.JSZip) { msg($("out-msgs"), "bad", "The zip tool didn't load. Download or copy the files one by one."); return; }
+    const zip = new JSZip();
+    made.forEach((m) => zip.file(`${m.folder}/${m.file}`, m.text));
+    save("Exxat_Mail_Files.zip", await zip.generateAsync({ type: "blob" }), $("out-msgs"));
+  });
+  $("start-over").addEventListener("click", () => {
+    [nAction, nLow, nResp, $("f-fusion"), $("f-notify"), $("f-stake")].forEach((el) => { el.checked = false; });
+    setForms([]); made = []; $("files").innerHTML = ""; go(1);
+  });
+  // postmark GUID readout
+  function showGuid() {
+    const g = newGuid();
+    $("guid-now").textContent = g;
+    $("guid-now").dataset.value = g;
+  }
+  $("guid-next").addEventListener("click", showGuid);
+  $("guid-copy").addEventListener("click", (e) => copyText($("guid-now").dataset.value, e.currentTarget));
+  // floating envelopes behind the content
+  (function floaters() {
+    const box = document.querySelector(".floaters"); if (!box) return;
+    const env = '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/>';
+    const plane = '<path d="M21 3L3 10.5l7 2.5 2.5 7z"/><path d="M10 13l11-10"/>';
+    for (let i = 0; i < 14; i++) {
+      const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("fill", "none"); s.setAttribute("stroke", "currentColor");
+      s.setAttribute("stroke-width", "1.4"); s.setAttribute("stroke-linejoin", "round");
+      s.innerHTML = i % 3 === 0 ? plane : env;
+      const size = 18 + Math.round(Math.random() * 26);
+      s.style.width = s.style.height = size + "px";
+      s.style.left = (Math.random() * 96).toFixed(1) + "%";
+      s.style.setProperty("--dur", (14 + Math.random() * 14).toFixed(1) + "s");
+      s.style.setProperty("--delay", (-Math.random() * 28).toFixed(1) + "s");
+      s.style.setProperty("--dx", (Math.random() * 80 - 40).toFixed(0) + "px");
+      s.style.setProperty("--r0", (Math.random() * 30 - 15).toFixed(0) + "deg");
+      s.style.setProperty("--r1", (Math.random() * 30 - 15).toFixed(0) + "deg");
+      box.appendChild(s);
+    }
+  })();
+  showGuid();
+  refresh();
+})();
+</script>
+</body>
+</html>
